@@ -14,7 +14,12 @@ export class Token {
   }
 
   toString() {
-    return `${this.type} ${this.lexeme} ${this.literal}`;
+    let lit = this.literal;
+
+    // ensure numbers have at least one decimal digit
+    if (typeof lit === "number") lit = lit.toFixed(Math.max(1, `${lit}`.split(".")[1]?.length || 0));
+
+    return `${this.type} ${this.lexeme} ${lit}`;
   }
 }
 

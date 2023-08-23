@@ -1,3 +1,3 @@
 import { main } from "./Lox";
 
-main();
+await main();

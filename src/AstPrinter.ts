@@ -1,5 +1,4 @@
 import { type Visitor, Expr, Binary, Grouping, Literal, Unary } from "./Expr";
-import { Token, TokenType } from "./Scanner";
 
 export class AstPrinter implements Visitor<string> {
   print(expr: Expr): string {
@@ -16,7 +15,12 @@ export class AstPrinter implements Visitor<string> {
 
   visitLiteralExpr(expr: Literal) {
     if (expr.value == null) return "nil";
-    return expr.value.toString();
+    let val = expr.value;
+
+    // ensure numbers have at least one decimal digit
+    if (typeof val === "number") val = val.toFixed(Math.max(1, `${val}`.split(".")[1]?.length || 0));
+
+    return val.toString();
   }
 
   visitUnaryExpr(expr: Unary) {
@@ -27,11 +31,3 @@ export class AstPrinter implements Visitor<string> {
     return `(${name} ${exprs.map(expr => expr.accept(this)).join(" ")})`;
   }
 }
-
-const expr = new Binary(
-  new Unary(new Token(TokenType.MINUS, "-", null, 1), new Literal(123)),
-  new Token(TokenType.STAR, "*", null, 1),
-  new Grouping(new Literal(45.67))
-);
-
-console.log(new AstPrinter().print(expr));
