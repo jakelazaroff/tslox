@@ -1,2 +1,9 @@
-node_modules
+# macos
 .DS_Store
+
+# bun
+node_modules
+*bun-build
+
+# app
+tslox

@@ -7,5 +7,10 @@
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
+  },
+  "prettier": {
+    "printWidth": 120,
+    "arrowParens": "avoid",
+    "trailingComma": "none"
   }
 }
