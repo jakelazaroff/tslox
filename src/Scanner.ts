@@ -1,4 +1,4 @@
-import { error } from "./index";
+import { error } from "./Lox";
 
 export class Token {
   type: TokenType;
