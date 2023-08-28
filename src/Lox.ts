@@ -1,8 +1,12 @@
 import { AstPrinter } from "./AstPrinter";
+import { Interpreter, type RuntimeError } from "./Interpreter";
 import { Parser } from "./Parser";
 import { Scanner, Token, TokenType } from "./Scanner";
 
 let hadError = false;
+let hadRuntimeError = false;
+
+const interpreter = new Interpreter();
 
 export async function main() {
   switch (Bun.argv.length) {
@@ -25,6 +29,7 @@ async function runFile(path: string) {
   run(source);
 
   if (hadError) process.exit(65);
+  if (hadRuntimeError) process.exit(70);
 }
 
 async function runPrompt() {
@@ -50,7 +55,7 @@ function run(source: string) {
   // stop if there was a syntax error
   if (hadError || !expr) return;
 
-  console.log(new AstPrinter().print(expr));
+  interpreter.interpret(expr);
 }
 
 export function error(problem: number, message: string): void;
@@ -64,4 +69,9 @@ export function error(problem: number | Token, message: string) {
 function report(line: number, where: string, message: string) {
   console.log("[line " + line + "] Error" + where + ": " + message);
   hadError = true;
+}
+
+export function runtimeError(error: RuntimeError) {
+  console.log(error.message + "\n[line " + error.token.line + "]");
+  hadRuntimeError = true;
 }
