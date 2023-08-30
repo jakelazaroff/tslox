@@ -2,6 +2,7 @@
   "name": "tslox",
   "module": "src/index.ts",
   "type": "module",
+  "license": "LGPL-3.0-or-later",
   "devDependencies": {
     "bun-types": "latest"
   },

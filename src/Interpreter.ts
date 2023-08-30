@@ -1,16 +1,49 @@
-import type { Binary, Expr, Grouping, Literal, Unary, Visitor } from "./Expr";
+import { Environment } from "./Environment";
+import type { Binary, Expr, Grouping, Literal, Unary, ExprVisitor, Variable, Assign } from "./Expr";
 import { runtimeError } from "./Lox";
 import { Token, TokenType } from "./Scanner";
+import { Stmt, type Expression, type Print, type StmtVisitor, Var, Block } from "./Stmt";
 
-export class Interpreter implements Visitor<unknown> {
-  interpret(expr: Expr) {
+export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<unknown> {
+  #environment = new Environment();
+
+  interpret(statements: Stmt[]) {
     try {
-      const value = this.#evaluate(expr);
-      console.log(stringify(value));
+      for (const statement of statements) {
+        this.#execute(statement);
+      }
     } catch (error: unknown) {
       if (error instanceof RuntimeError) return runtimeError(error);
       throw error;
     }
+  }
+
+  visitVarStmt(stmt: Var) {
+    const value = stmt.initializer ? this.#evaluate(stmt.initializer) : null;
+    this.#environment.define(stmt.name.lexeme, value);
+  }
+
+  visitExpressionStmt(stmt: Expression) {
+    this.#evaluate(stmt.expr);
+  }
+
+  visitPrintStmt(stmt: Print) {
+    const value = this.#evaluate(stmt.expr);
+    console.log(stringify(value));
+  }
+
+  visitBlockStmt(stmt: Block) {
+    this.#executeBlock(stmt.statements, new Environment(this.#environment));
+  }
+
+  visitVariableExpr(expr: Variable) {
+    return this.#environment.get(expr.name);
+  }
+
+  visitAssignExpr(expr: Assign) {
+    const value = this.#evaluate(expr.value);
+    this.#environment.assign(expr.name, value);
+    return value;
   }
 
   visitGroupingExpr(expr: Grouping) {
@@ -84,6 +117,22 @@ export class Interpreter implements Visitor<unknown> {
   #evaluate(expr: Expr): unknown {
     return expr.accept(this);
   }
+
+  #execute(stmt: Stmt) {
+    stmt.accept(this);
+  }
+
+  #executeBlock(statements: Stmt[], environment: Environment) {
+    const prev = this.#environment;
+    try {
+      this.#environment = environment;
+      for (const statement of statements) {
+        this.#execute(statement);
+      }
+    } finally {
+      this.#environment = prev;
+    }
+  }
 }
 
 function isTruthy(x: unknown): boolean {
@@ -100,6 +149,10 @@ function checkNumberOperand(operator: Token, operand: unknown): asserts operand 
 
 function stringify(x: unknown) {
   if (x === null) return "nil";
+
+  // edge case because stringifying -0 results in "0"
+  if (x === 0) return x.toLocaleString();
+
   return `${x}`;
 }
 

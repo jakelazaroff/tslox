@@ -1,14 +1,44 @@
 import type { Token } from "./Scanner";
 
 export abstract class Expr {
-  abstract accept<T>(visitor: Visitor<T>): T;
+  abstract accept<T>(visitor: ExprVisitor<T>): T;
 }
 
-export interface Visitor<T> {
-  visitBinaryExpr(expr: Binary): T;
+export interface ExprVisitor<T> {
+  visitVariableExpr(expr: Variable): T;
+  visitAssignExpr(expr: Assign): T;
   visitGroupingExpr(expr: Grouping): T;
-  visitLiteralExpr(expr: Literal): T;
+  visitBinaryExpr(expr: Binary): T;
   visitUnaryExpr(expr: Unary): T;
+  visitLiteralExpr(expr: Literal): T;
+}
+
+export class Variable extends Expr {
+  name: Token;
+
+  constructor(name: Token) {
+    super();
+    this.name = name;
+  }
+
+  accept<T>(visitor: ExprVisitor<T>) {
+    return visitor.visitVariableExpr(this);
+  }
+}
+
+export class Assign extends Expr {
+  name: Token;
+  value: Expr;
+
+  constructor(name: Token, value: Expr) {
+    super();
+    this.name = name;
+    this.value = value;
+  }
+
+  accept<T>(visitor: ExprVisitor<T>) {
+    return visitor.visitAssignExpr(this);
+  }
 }
 
 export class Grouping extends Expr {
@@ -19,7 +49,7 @@ export class Grouping extends Expr {
     this.expr = expr;
   }
 
-  accept<T>(visitor: Visitor<T>) {
+  accept<T>(visitor: ExprVisitor<T>) {
     return visitor.visitGroupingExpr(this);
   }
 }
@@ -32,7 +62,7 @@ export class Literal extends Expr {
     this.value = value;
   }
 
-  accept<T>(visitor: Visitor<T>) {
+  accept<T>(visitor: ExprVisitor<T>) {
     return visitor.visitLiteralExpr(this);
   }
 }
@@ -47,7 +77,7 @@ export class Unary extends Expr {
     this.expr = expr;
   }
 
-  accept<T>(visitor: Visitor<T>) {
+  accept<T>(visitor: ExprVisitor<T>) {
     return visitor.visitUnaryExpr(this);
   }
 }
@@ -64,7 +94,7 @@ export class Binary extends Expr {
     this.right = right;
   }
 
-  accept<T>(visitor: Visitor<T>) {
+  accept<T>(visitor: ExprVisitor<T>) {
     return visitor.visitBinaryExpr(this);
   }
 }

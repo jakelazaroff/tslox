@@ -1,4 +1,3 @@
-import { AstPrinter } from "./AstPrinter";
 import { Interpreter, type RuntimeError } from "./Interpreter";
 import { Parser } from "./Parser";
 import { Scanner, Token, TokenType } from "./Scanner";
@@ -50,12 +49,12 @@ function run(source: string) {
   const tokens = scanner.scanTokens();
 
   const parser = new Parser(tokens);
-  const expr = parser.parse();
+  const statements = parser.parse();
 
   // stop if there was a syntax error
-  if (hadError || !expr) return;
+  if (hadError) return;
 
-  interpreter.interpret(expr);
+  interpreter.interpret(statements);
 }
 
 export function error(problem: number, message: string): void;
@@ -67,11 +66,11 @@ export function error(problem: number | Token, message: string) {
 }
 
 function report(line: number, where: string, message: string) {
-  console.log("[line " + line + "] Error" + where + ": " + message);
+  process.stderr.write(`[line ${line}] Error${where}: ${message}\n`);
   hadError = true;
 }
 
 export function runtimeError(error: RuntimeError) {
-  console.log(error.message + "\n[line " + error.token.line + "]");
+  process.stderr.write(`${error.message}\n[line ${error.token.line}]\n`);
   hadRuntimeError = true;
 }
