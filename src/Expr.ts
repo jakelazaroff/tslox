@@ -9,6 +9,7 @@ export interface ExprVisitor<T> {
   visitAssignExpr(expr: Assign): T;
   visitGroupingExpr(expr: Grouping): T;
   visitBinaryExpr(expr: Binary): T;
+  visitLogicalExpr(expr: Logical): T;
   visitUnaryExpr(expr: Unary): T;
   visitLiteralExpr(expr: Literal): T;
 }
@@ -96,5 +97,22 @@ export class Binary extends Expr {
 
   accept<T>(visitor: ExprVisitor<T>) {
     return visitor.visitBinaryExpr(this);
+  }
+}
+
+export class Logical extends Expr {
+  left: Expr;
+  operator: Token;
+  right: Expr;
+
+  constructor(left: Expr, operator: Token, right: Expr) {
+    super();
+    this.left = left;
+    this.operator = operator;
+    this.right = right;
+  }
+
+  accept<T>(visitor: ExprVisitor<T>) {
+    return visitor.visitLogicalExpr(this);
   }
 }

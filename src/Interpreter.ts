@@ -1,8 +1,8 @@
 import { Environment } from "./Environment";
-import type { Binary, Expr, Grouping, Literal, Unary, ExprVisitor, Variable, Assign } from "./Expr";
+import type { Binary, Expr, Grouping, Literal, Unary, ExprVisitor, Variable, Assign, Logical } from "./Expr";
 import { runtimeError } from "./Lox";
 import { Token, TokenType } from "./Scanner";
-import { Stmt, type Expression, type Print, type StmtVisitor, Var, Block } from "./Stmt";
+import { Stmt, type Expression, type Print, type StmtVisitor, Var, Block, If, While } from "./Stmt";
 
 export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<unknown> {
   #environment = new Environment();
@@ -34,6 +34,17 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<unknown> {
 
   visitBlockStmt(stmt: Block) {
     this.#executeBlock(stmt.statements, new Environment(this.#environment));
+  }
+
+  visitIfStmt(stmt: If) {
+    if (isTruthy(this.#evaluate(stmt.condition))) this.#execute(stmt.thenBranch);
+    else if (stmt.elseBranch != null) this.#execute(stmt.elseBranch);
+  }
+
+  visitWhileStmt(stmt: While) {
+    while (isTruthy(this.#evaluate(stmt.condition))) {
+      this.#execute(stmt.body);
+    }
   }
 
   visitVariableExpr(expr: Variable) {
@@ -95,6 +106,13 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<unknown> {
     }
 
     return null;
+  }
+
+  visitLogicalExpr(expr: Logical) {
+    const left = this.#evaluate(expr.left);
+
+    if (isTruthy(left) === (expr.operator.type === TokenType.OR)) return left;
+    return this.#evaluate(expr.right);
   }
 
   visitUnaryExpr(expr: Unary) {
