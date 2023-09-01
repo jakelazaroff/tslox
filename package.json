@@ -3,6 +3,9 @@
   "module": "src/index.ts",
   "type": "module",
   "license": "LGPL-3.0-or-later",
+  "scripts": {
+    "test": "dart test/test.dart $1 --interpreter bun --arguments 'src/index.ts'"
+  },
   "devDependencies": {
     "bun-types": "latest"
   },
