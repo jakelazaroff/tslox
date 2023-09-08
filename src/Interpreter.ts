@@ -1,13 +1,35 @@
 import { Environment } from "./Environment";
-import type { Binary, Expr, Grouping, Literal, Unary, ExprVisitor, Variable, Assign, Logical } from "./Expr";
 import { runtimeError } from "./Lox";
+import { Callable } from "./Callable";
 import { Token, TokenType } from "./Scanner";
-import { Stmt, type Expression, type Print, type StmtVisitor, Var, Block, If, While } from "./Stmt";
+import * as Stmt from "./Stmt";
+import * as Expr from "./Expr";
+import { Function } from "./Function";
 
-export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<unknown> {
-  #environment = new Environment();
+export class Interpreter implements Expr.ExprVisitor<unknown>, Stmt.StmtVisitor<unknown> {
+  globals = new Environment();
+  #environment = this.globals;
 
-  interpret(statements: Stmt[]) {
+  constructor() {
+    this.globals.define(
+      "clock",
+      new (class Clock extends Callable {
+        get arity() {
+          return 0;
+        }
+
+        override call() {
+          return performance.now() / 1000.0;
+        }
+
+        override toString() {
+          return "<native fn>";
+        }
+      })()
+    );
+  }
+
+  interpret(statements: Stmt.Stmt[]) {
     try {
       for (const statement of statements) {
         this.#execute(statement);
@@ -18,50 +40,63 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<unknown> {
     }
   }
 
-  visitVarStmt(stmt: Var) {
+  visitVarStmt(stmt: Stmt.Var) {
     const value = stmt.initializer ? this.#evaluate(stmt.initializer) : null;
     this.#environment.define(stmt.name.lexeme, value);
   }
 
-  visitExpressionStmt(stmt: Expression) {
+  visitExpressionStmt(stmt: Stmt.Expression) {
     this.#evaluate(stmt.expr);
   }
 
-  visitPrintStmt(stmt: Print) {
+  visitFunctionStmt(stmt: Stmt.Function) {
+    const fn = new Function(stmt, this.#environment);
+    this.#environment.define(stmt.name.lexeme, fn);
+    return null;
+  }
+
+  visitPrintStmt(stmt: Stmt.Print) {
     const value = this.#evaluate(stmt.expr);
     console.log(stringify(value));
   }
 
-  visitBlockStmt(stmt: Block) {
-    this.#executeBlock(stmt.statements, new Environment(this.#environment));
+  visitReturnStmt(stmt: Stmt.Return) {
+    let value: unknown = null;
+    if (stmt.value !== null) value = this.#evaluate(stmt.value);
+
+    throw new Return(value);
   }
 
-  visitIfStmt(stmt: If) {
+  visitBlockStmt(stmt: Stmt.Block) {
+    this.executeBlock(stmt.statements, new Environment(this.#environment));
+  }
+
+  visitIfStmt(stmt: Stmt.If) {
     if (isTruthy(this.#evaluate(stmt.condition))) this.#execute(stmt.thenBranch);
     else if (stmt.elseBranch != null) this.#execute(stmt.elseBranch);
   }
 
-  visitWhileStmt(stmt: While) {
+  visitWhileStmt(stmt: Stmt.While) {
     while (isTruthy(this.#evaluate(stmt.condition))) {
       this.#execute(stmt.body);
     }
   }
 
-  visitVariableExpr(expr: Variable) {
+  visitVariableExpr(expr: Expr.Variable) {
     return this.#environment.get(expr.name);
   }
 
-  visitAssignExpr(expr: Assign) {
+  visitAssignExpr(expr: Expr.Assign) {
     const value = this.#evaluate(expr.value);
     this.#environment.assign(expr.name, value);
     return value;
   }
 
-  visitGroupingExpr(expr: Grouping) {
+  visitGroupingExpr(expr: Expr.Grouping) {
     return this.#evaluate(expr.expr);
   }
 
-  visitBinaryExpr(expr: Binary) {
+  visitBinaryExpr(expr: Expr.Binary) {
     const left = this.#evaluate(expr.left);
     const right = this.#evaluate(expr.right);
 
@@ -108,14 +143,14 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<unknown> {
     return null;
   }
 
-  visitLogicalExpr(expr: Logical) {
+  visitLogicalExpr(expr: Expr.Logical) {
     const left = this.#evaluate(expr.left);
 
     if (isTruthy(left) === (expr.operator.type === TokenType.OR)) return left;
     return this.#evaluate(expr.right);
   }
 
-  visitUnaryExpr(expr: Unary) {
+  visitUnaryExpr(expr: Expr.Unary) {
     const right = this.#evaluate(expr.expr);
     switch (expr.operator.type) {
       case TokenType.BANG:
@@ -128,19 +163,37 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<unknown> {
     return null;
   }
 
-  visitLiteralExpr(expr: Literal) {
+  visitCallExpr(expr: Expr.Call) {
+    const callee = this.#evaluate(expr.callee);
+
+    const args: unknown[] = [];
+    for (const arg of expr.args) {
+      args.push(this.#evaluate(arg));
+    }
+
+    if (!(callee instanceof Callable)) throw new RuntimeError(expr.paren, "Can only call functions and classes.");
+
+    const fn = callee as Callable;
+    if (args.length !== fn.arity) {
+      throw new RuntimeError(expr.paren, `Expected ${fn.arity} arguments but got ${args.length}.`);
+    }
+
+    return fn.call(this, args);
+  }
+
+  visitLiteralExpr(expr: Expr.Literal) {
     return expr.value;
   }
 
-  #evaluate(expr: Expr): unknown {
+  #evaluate(expr: Expr.Expr): unknown {
     return expr.accept(this);
   }
 
-  #execute(stmt: Stmt) {
+  #execute(stmt: Stmt.Stmt) {
     stmt.accept(this);
   }
 
-  #executeBlock(statements: Stmt[], environment: Environment) {
+  executeBlock(statements: Stmt.Stmt[], environment: Environment) {
     const prev = this.#environment;
     try {
       this.#environment = environment;
@@ -180,5 +233,13 @@ export class RuntimeError extends Error {
   constructor(token: Token, message: string) {
     super(message);
     this.token = token;
+  }
+}
+
+export class Return {
+  value: unknown;
+
+  constructor(value: unknown) {
+    this.value = value;
   }
 }

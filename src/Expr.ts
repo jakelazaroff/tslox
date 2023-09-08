@@ -11,7 +11,25 @@ export interface ExprVisitor<T> {
   visitBinaryExpr(expr: Binary): T;
   visitLogicalExpr(expr: Logical): T;
   visitUnaryExpr(expr: Unary): T;
+  visitCallExpr(expr: Call): T;
   visitLiteralExpr(expr: Literal): T;
+}
+
+export class Call extends Expr {
+  callee: Expr;
+  paren: Token;
+  args: Expr[];
+
+  constructor(callee: Expr, paren: Token, args: Expr[]) {
+    super();
+    this.callee = callee;
+    this.paren = paren;
+    this.args = args;
+  }
+
+  override accept<T>(visitor: ExprVisitor<T>) {
+    return visitor.visitCallExpr(this);
+  }
 }
 
 export class Variable extends Expr {

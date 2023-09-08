@@ -12,6 +12,8 @@ export interface StmtVisitor<T> {
   visitBlockStmt(stmt: Block): T;
   visitIfStmt(stmt: If): T;
   visitWhileStmt(stmt: While): T;
+  visitFunctionStmt(stmt: Function): T;
+  visitReturnStmt(stmt: Return): T;
 }
 
 export class Expression extends Stmt {
@@ -24,6 +26,23 @@ export class Expression extends Stmt {
 
   accept<T>(visitor: StmtVisitor<T>): T {
     return visitor.visitExpressionStmt(this);
+  }
+}
+
+export class Function extends Stmt {
+  name: Token;
+  params: Token[];
+  body: Stmt[];
+
+  constructor(name: Token, params: Token[], body: Stmt[]) {
+    super();
+    this.name = name;
+    this.params = params;
+    this.body = body;
+  }
+
+  override accept<T>(visitor: StmtVisitor<T>) {
+    return visitor.visitFunctionStmt(this);
   }
 }
 
@@ -82,6 +101,21 @@ export class If extends Stmt {
 
   accept<T>(visitor: StmtVisitor<T>) {
     return visitor.visitIfStmt(this);
+  }
+}
+
+export class Return extends Stmt {
+  keyword: Token;
+  value: Expr;
+
+  constructor(keyword: Token, value: Expr) {
+    super();
+    this.keyword = keyword;
+    this.value = value;
+  }
+
+  override accept<T>(visitor: StmtVisitor<T>) {
+    return visitor.visitReturnStmt(this);
   }
 }
 
