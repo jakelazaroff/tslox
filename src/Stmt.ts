@@ -2,10 +2,10 @@ import type { Expr } from "./Expr";
 import type { Token } from "./Scanner";
 
 export abstract class Stmt {
-  abstract accept<T>(visitor: StmtVisitor<T>): T;
+  abstract accept<T>(visitor: Visitor<T>): T;
 }
 
-export interface StmtVisitor<T> {
+export interface Visitor<T> {
   visitExpressionStmt(stmt: Expression): T;
   visitPrintStmt(stmt: Print): T;
   visitVarStmt(stmt: Var): T;
@@ -24,7 +24,7 @@ export class Expression extends Stmt {
     this.expr = expr;
   }
 
-  accept<T>(visitor: StmtVisitor<T>): T {
+  accept<T>(visitor: Visitor<T>): T {
     return visitor.visitExpressionStmt(this);
   }
 }
@@ -41,7 +41,7 @@ export class Function extends Stmt {
     this.body = body;
   }
 
-  override accept<T>(visitor: StmtVisitor<T>) {
+  override accept<T>(visitor: Visitor<T>) {
     return visitor.visitFunctionStmt(this);
   }
 }
@@ -54,7 +54,7 @@ export class Print extends Stmt {
     this.expr = expr;
   }
 
-  accept<T>(visitor: StmtVisitor<T>): T {
+  accept<T>(visitor: Visitor<T>): T {
     return visitor.visitPrintStmt(this);
   }
 }
@@ -69,7 +69,7 @@ export class Var extends Stmt {
     this.initializer = initializer;
   }
 
-  accept<T>(visitor: StmtVisitor<T>): T {
+  accept<T>(visitor: Visitor<T>): T {
     return visitor.visitVarStmt(this);
   }
 }
@@ -82,7 +82,7 @@ export class Block extends Stmt {
     this.statements = statements;
   }
 
-  accept<T>(visitor: StmtVisitor<T>): T {
+  accept<T>(visitor: Visitor<T>): T {
     return visitor.visitBlockStmt(this);
   }
 }
@@ -99,7 +99,7 @@ export class If extends Stmt {
     this.elseBranch = elseBranch;
   }
 
-  accept<T>(visitor: StmtVisitor<T>) {
+  accept<T>(visitor: Visitor<T>) {
     return visitor.visitIfStmt(this);
   }
 }
@@ -114,7 +114,7 @@ export class Return extends Stmt {
     this.value = value;
   }
 
-  override accept<T>(visitor: StmtVisitor<T>) {
+  override accept<T>(visitor: Visitor<T>) {
     return visitor.visitReturnStmt(this);
   }
 }
@@ -129,7 +129,7 @@ export class While extends Stmt {
     this.body = body;
   }
 
-  accept<T>(visitor: StmtVisitor<T>) {
+  accept<T>(visitor: Visitor<T>) {
     return visitor.visitWhileStmt(this);
   }
 }

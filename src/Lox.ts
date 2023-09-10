@@ -1,5 +1,6 @@
 import { Interpreter, type RuntimeError } from "./Interpreter";
 import { Parser } from "./Parser";
+import { Resolver } from "./Resolver";
 import { Scanner, Token, TokenType } from "./Scanner";
 
 let hadError = false;
@@ -52,6 +53,12 @@ function run(source: string) {
   const statements = parser.parse();
 
   // stop if there was a syntax error
+  if (hadError) return;
+
+  const resolver = new Resolver(interpreter);
+  resolver.resolve(...statements);
+
+  // Stop if there was a resolution error.
   if (hadError) return;
 
   interpreter.interpret(statements);

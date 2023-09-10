@@ -6,9 +6,10 @@ import * as Stmt from "./Stmt";
 import * as Expr from "./Expr";
 import { Function } from "./Function";
 
-export class Interpreter implements Expr.ExprVisitor<unknown>, Stmt.StmtVisitor<unknown> {
+export class Interpreter implements Expr.Visitor<unknown>, Stmt.Visitor<unknown> {
   globals = new Environment();
   #environment = this.globals;
+  #locals = new Map<Expr.Expr, number>();
 
   constructor() {
     this.globals.define(
@@ -83,12 +84,16 @@ export class Interpreter implements Expr.ExprVisitor<unknown>, Stmt.StmtVisitor<
   }
 
   visitVariableExpr(expr: Expr.Variable) {
-    return this.#environment.get(expr.name);
+    return this.#lookupVariable(expr.name, expr);
   }
 
   visitAssignExpr(expr: Expr.Assign) {
     const value = this.#evaluate(expr.value);
-    this.#environment.assign(expr.name, value);
+
+    const depth = this.#locals.get(expr);
+    if (depth !== undefined) this.#environment.assignAt(depth, expr.name, value);
+    else this.globals.assign(expr.name, value);
+
     return value;
   }
 
@@ -193,6 +198,12 @@ export class Interpreter implements Expr.ExprVisitor<unknown>, Stmt.StmtVisitor<
     stmt.accept(this);
   }
 
+  #lookupVariable(name: Token, expr: Expr.Expr) {
+    const depth = this.#locals.get(expr);
+    if (depth !== undefined) return this.#environment.getAt(depth, name);
+    return this.globals.get(name);
+  }
+
   executeBlock(statements: Stmt.Stmt[], environment: Environment) {
     const prev = this.#environment;
     try {
@@ -203,6 +214,10 @@ export class Interpreter implements Expr.ExprVisitor<unknown>, Stmt.StmtVisitor<
     } finally {
       this.#environment = prev;
     }
+  }
+
+  resolve(expr: Expr.Expr, depth: number) {
+    this.#locals.set(expr, depth);
   }
 }
 

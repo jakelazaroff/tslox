@@ -1,10 +1,10 @@
 import type { Token } from "./Scanner";
 
 export abstract class Expr {
-  abstract accept<T>(visitor: ExprVisitor<T>): T;
+  abstract accept<T>(visitor: Visitor<T>): T;
 }
 
-export interface ExprVisitor<T> {
+export interface Visitor<T> {
   visitVariableExpr(expr: Variable): T;
   visitAssignExpr(expr: Assign): T;
   visitGroupingExpr(expr: Grouping): T;
@@ -27,7 +27,7 @@ export class Call extends Expr {
     this.args = args;
   }
 
-  override accept<T>(visitor: ExprVisitor<T>) {
+  override accept<T>(visitor: Visitor<T>) {
     return visitor.visitCallExpr(this);
   }
 }
@@ -40,7 +40,7 @@ export class Variable extends Expr {
     this.name = name;
   }
 
-  accept<T>(visitor: ExprVisitor<T>) {
+  accept<T>(visitor: Visitor<T>) {
     return visitor.visitVariableExpr(this);
   }
 }
@@ -55,7 +55,7 @@ export class Assign extends Expr {
     this.value = value;
   }
 
-  accept<T>(visitor: ExprVisitor<T>) {
+  accept<T>(visitor: Visitor<T>) {
     return visitor.visitAssignExpr(this);
   }
 }
@@ -68,7 +68,7 @@ export class Grouping extends Expr {
     this.expr = expr;
   }
 
-  accept<T>(visitor: ExprVisitor<T>) {
+  accept<T>(visitor: Visitor<T>) {
     return visitor.visitGroupingExpr(this);
   }
 }
@@ -81,7 +81,7 @@ export class Literal extends Expr {
     this.value = value;
   }
 
-  accept<T>(visitor: ExprVisitor<T>) {
+  accept<T>(visitor: Visitor<T>) {
     return visitor.visitLiteralExpr(this);
   }
 }
@@ -96,7 +96,7 @@ export class Unary extends Expr {
     this.expr = expr;
   }
 
-  accept<T>(visitor: ExprVisitor<T>) {
+  accept<T>(visitor: Visitor<T>) {
     return visitor.visitUnaryExpr(this);
   }
 }
@@ -113,7 +113,7 @@ export class Binary extends Expr {
     this.right = right;
   }
 
-  accept<T>(visitor: ExprVisitor<T>) {
+  accept<T>(visitor: Visitor<T>) {
     return visitor.visitBinaryExpr(this);
   }
 }
@@ -130,7 +130,7 @@ export class Logical extends Expr {
     this.right = right;
   }
 
-  accept<T>(visitor: ExprVisitor<T>) {
+  accept<T>(visitor: Visitor<T>) {
     return visitor.visitLogicalExpr(this);
   }
 }

@@ -35,6 +35,6 @@ export class Function extends Callable {
   }
 
   override toString() {
-    return "<fn " + this.declaration.name.lexeme + ">";
+    return `<fn ${this.declaration.name.lexeme}>`;
   }
 }
