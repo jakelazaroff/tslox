@@ -38,8 +38,8 @@ export class Environment {
     throw new RuntimeError(name, "Undefined variable '" + name.lexeme + "'.");
   }
 
-  getAt(depth: number, name: Token) {
-    return this.#ancestor(depth)?.values.get(name.lexeme);
+  getAt(depth: number, name: string) {
+    return this.#ancestor(depth)?.values.get(name);
   }
 
   #ancestor(depth: number) {

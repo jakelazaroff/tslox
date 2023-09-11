@@ -1,4 +1,4 @@
-import type { Expr } from "./Expr";
+import type { Expr, Variable } from "./Expr";
 import type { Token } from "./Scanner";
 
 export abstract class Stmt {
@@ -6,14 +6,45 @@ export abstract class Stmt {
 }
 
 export interface Visitor<T> {
+  visitBlockStmt(stmt: Block): T;
+  visitClassStmt(stmt: Class): T;
   visitExpressionStmt(stmt: Expression): T;
+  visitFunctionStmt(stmt: Function): T;
+  visitIfStmt(stmt: If): T;
+  visitReturnStmt(stmt: Return): T;
   visitPrintStmt(stmt: Print): T;
   visitVarStmt(stmt: Var): T;
-  visitBlockStmt(stmt: Block): T;
-  visitIfStmt(stmt: If): T;
   visitWhileStmt(stmt: While): T;
-  visitFunctionStmt(stmt: Function): T;
-  visitReturnStmt(stmt: Return): T;
+}
+
+export class Block extends Stmt {
+  statements: Stmt[];
+
+  constructor(statements: Stmt[]) {
+    super();
+    this.statements = statements;
+  }
+
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.visitBlockStmt(this);
+  }
+}
+
+export class Class extends Stmt {
+  name: Token;
+  methods: Function[];
+  superclass?: Variable;
+
+  constructor(name: Token, methods: Function[], superclass?: Variable) {
+    super();
+    this.name = name;
+    this.superclass = superclass;
+    this.methods = methods;
+  }
+
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.visitClassStmt(this);
+  }
 }
 
 export class Expression extends Stmt {
@@ -46,47 +77,6 @@ export class Function extends Stmt {
   }
 }
 
-export class Print extends Stmt {
-  expr: Expr;
-
-  constructor(expr: Expr) {
-    super();
-    this.expr = expr;
-  }
-
-  accept<T>(visitor: Visitor<T>): T {
-    return visitor.visitPrintStmt(this);
-  }
-}
-
-export class Var extends Stmt {
-  name: Token;
-  initializer?: Expr;
-
-  constructor(name: Token, initializer?: Expr) {
-    super();
-    this.name = name;
-    this.initializer = initializer;
-  }
-
-  accept<T>(visitor: Visitor<T>): T {
-    return visitor.visitVarStmt(this);
-  }
-}
-
-export class Block extends Stmt {
-  statements: Stmt[];
-
-  constructor(statements: Stmt[]) {
-    super();
-    this.statements = statements;
-  }
-
-  accept<T>(visitor: Visitor<T>): T {
-    return visitor.visitBlockStmt(this);
-  }
-}
-
 export class If extends Stmt {
   condition: Expr;
   thenBranch: Stmt;
@@ -104,6 +94,19 @@ export class If extends Stmt {
   }
 }
 
+export class Print extends Stmt {
+  expr: Expr;
+
+  constructor(expr: Expr) {
+    super();
+    this.expr = expr;
+  }
+
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.visitPrintStmt(this);
+  }
+}
+
 export class Return extends Stmt {
   keyword: Token;
   value: Expr;
@@ -116,6 +119,21 @@ export class Return extends Stmt {
 
   override accept<T>(visitor: Visitor<T>) {
     return visitor.visitReturnStmt(this);
+  }
+}
+
+export class Var extends Stmt {
+  name: Token;
+  initializer?: Expr;
+
+  constructor(name: Token, initializer?: Expr) {
+    super();
+    this.name = name;
+    this.initializer = initializer;
+  }
+
+  accept<T>(visitor: Visitor<T>): T {
+    return visitor.visitVarStmt(this);
   }
 }
 

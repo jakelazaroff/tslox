@@ -81,24 +81,24 @@ export class Scanner {
   #current = 0;
   #line = 1;
 
-  static keywords: { [key: string]: TokenType } = {
-    and: TokenType.AND,
-    class: TokenType.CLASS,
-    else: TokenType.ELSE,
-    false: TokenType.FALSE,
-    for: TokenType.FOR,
-    fun: TokenType.FUN,
-    if: TokenType.IF,
-    nil: TokenType.NIL,
-    or: TokenType.OR,
-    print: TokenType.PRINT,
-    return: TokenType.RETURN,
-    super: TokenType.SUPER,
-    this: TokenType.THIS,
-    true: TokenType.TRUE,
-    var: TokenType.VAR,
-    while: TokenType.WHILE
-  };
+  static keywords = new Map<string, TokenType>([
+    ["and", TokenType.AND],
+    ["class", TokenType.CLASS],
+    ["else", TokenType.ELSE],
+    ["false", TokenType.FALSE],
+    ["for", TokenType.FOR],
+    ["fun", TokenType.FUN],
+    ["if", TokenType.IF],
+    ["nil", TokenType.NIL],
+    ["or", TokenType.OR],
+    ["print", TokenType.PRINT],
+    ["return", TokenType.RETURN],
+    ["super", TokenType.SUPER],
+    ["this", TokenType.THIS],
+    ["true", TokenType.TRUE],
+    ["var", TokenType.VAR],
+    ["while", TokenType.WHILE]
+  ]);
 
   constructor(source: string) {
     this.#source = source;
@@ -251,7 +251,7 @@ export class Scanner {
     while (isAlphaNumeric(this.#peek())) this.#advance();
 
     const text = this.#source.substring(this.#start, this.#current);
-    const type = Scanner.keywords[text] || TokenType.IDENTIFIER;
+    const type = Scanner.keywords.get(text) || TokenType.IDENTIFIER;
     this.#add(type);
   }
 }

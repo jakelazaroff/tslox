@@ -91,6 +91,7 @@ export class Parser {
 
   #declaration() {
     try {
+      if (this.#match(TokenType.CLASS)) return this.#classDeclaration();
       if (this.#match(TokenType.FUN)) return this.#function("function");
       if (this.#match(TokenType.VAR)) return this.#varDeclaration();
 
@@ -99,6 +100,20 @@ export class Parser {
       if (error instanceof ParseError) return this.#synchronize();
       throw error;
     }
+  }
+
+  #classDeclaration() {
+    const name = this.#consume(TokenType.IDENTIFIER, "Expect class name.");
+    this.#consume(TokenType.LEFT_BRACE, "Expect '{' before class body.");
+
+    const methods: Stmt.Function[] = [];
+    while (!this.#check(TokenType.RIGHT_BRACE) && !this.#done) {
+      methods.push(this.#function("method"));
+    }
+
+    this.#consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.");
+
+    return new Stmt.Class(name, methods);
   }
 
   #function(kind: string) {
@@ -235,6 +250,8 @@ export class Parser {
       const value = this.#assignment();
 
       if (expr instanceof Expr.Variable) return new Expr.Assign(expr.name, value);
+      else if (expr instanceof Expr.Get) return new Expr.Set(expr.object, expr.name, value);
+
       error(equals, "Invalid assignment target.");
     }
 
@@ -328,7 +345,10 @@ export class Parser {
 
     while (true) {
       if (this.#match(TokenType.LEFT_PAREN)) expr = this.#finishCall(expr);
-      else break;
+      else if (this.#match(TokenType.DOT)) {
+        const name = this.#consume(TokenType.IDENTIFIER, "Expect property name after '.'.");
+        expr = new Expr.Get(expr, name);
+      } else break;
     }
 
     return expr;
@@ -354,6 +374,7 @@ export class Parser {
     if (this.#match(TokenType.TRUE)) return new Expr.Literal(true);
     if (this.#match(TokenType.NIL)) return new Expr.Literal(null);
     if (this.#match(TokenType.NUMBER, TokenType.STRING)) return new Expr.Literal(this.#previous().literal);
+    if (this.#match(TokenType.THIS)) return new Expr.This(this.#previous());
     if (this.#match(TokenType.IDENTIFIER)) return new Expr.Variable(this.#previous());
 
     if (this.#match(TokenType.LEFT_PAREN)) {

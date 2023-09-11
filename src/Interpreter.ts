@@ -5,6 +5,7 @@ import { Token, TokenType } from "./Scanner";
 import * as Stmt from "./Stmt";
 import * as Expr from "./Expr";
 import { Function } from "./Function";
+import { Class, Instance } from "./Class";
 
 export class Interpreter implements Expr.Visitor<unknown>, Stmt.Visitor<unknown> {
   globals = new Environment();
@@ -39,6 +40,17 @@ export class Interpreter implements Expr.Visitor<unknown>, Stmt.Visitor<unknown>
       if (error instanceof RuntimeError) return runtimeError(error);
       throw error;
     }
+  }
+
+  visitClassStmt(stmt: Stmt.Class) {
+    this.#environment.define(stmt.name.lexeme, null);
+
+    const methods = new Map<string, Function>();
+    for (const method of stmt.methods) {
+      methods.set(method.name.lexeme, new Function(method, this.#environment, method.name.lexeme === "init"));
+    }
+
+    this.#environment.assign(stmt.name, new Class(stmt.name.lexeme, methods));
   }
 
   visitVarStmt(stmt: Stmt.Var) {
@@ -168,6 +180,10 @@ export class Interpreter implements Expr.Visitor<unknown>, Stmt.Visitor<unknown>
     return null;
   }
 
+  visitThisExpr(expr: Expr.This) {
+    return this.#lookupVariable(expr.keyword, expr);
+  }
+
   visitCallExpr(expr: Expr.Call) {
     const callee = this.#evaluate(expr.callee);
 
@@ -186,6 +202,23 @@ export class Interpreter implements Expr.Visitor<unknown>, Stmt.Visitor<unknown>
     return fn.call(this, args);
   }
 
+  visitGetExpr(expr: Expr.Get) {
+    const object = this.#evaluate(expr.object);
+    if (object instanceof Instance) return object.get(expr.name);
+
+    throw new RuntimeError(expr.name, "Only instances have properties.");
+  }
+
+  visitSetExpr(expr: Expr.Set) {
+    const object = this.#evaluate(expr.object);
+    if (!(object instanceof Instance)) throw new RuntimeError(expr.name, "Only instances have fields.");
+
+    const value = this.#evaluate(expr.value);
+    object.set(expr.name, value);
+
+    return value;
+  }
+
   visitLiteralExpr(expr: Expr.Literal) {
     return expr.value;
   }
@@ -200,7 +233,7 @@ export class Interpreter implements Expr.Visitor<unknown>, Stmt.Visitor<unknown>
 
   #lookupVariable(name: Token, expr: Expr.Expr) {
     const depth = this.#locals.get(expr);
-    if (depth !== undefined) return this.#environment.getAt(depth, name);
+    if (depth !== undefined) return this.#environment.getAt(depth, name.lexeme);
     return this.globals.get(name);
   }
 

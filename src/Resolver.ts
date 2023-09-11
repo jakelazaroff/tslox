@@ -1,18 +1,26 @@
 import type { Interpreter } from "./Interpreter";
-import type * as Expr from "./Expr";
+import * as Expr from "./Expr";
 import type * as Stmt from "./Stmt";
 import type { Token } from "./Scanner";
 import { error } from "./Lox";
 
 enum FunctionType {
   NONE,
-  FUNCTION
+  FUNCTION,
+  INITIALIZER,
+  METHOD
+}
+
+enum ClassType {
+  NONE,
+  CLASS
 }
 
 export class Resolver implements Expr.Visitor<void>, Stmt.Visitor<void> {
   #interpreter: Interpreter;
   #scopes: Map<string, boolean>[] = [];
   #currentFunction = FunctionType.NONE;
+  #currentClass = ClassType.NONE;
 
   constructor(interpreter: Interpreter) {
     this.#interpreter = interpreter;
@@ -22,83 +30,126 @@ export class Resolver implements Expr.Visitor<void>, Stmt.Visitor<void> {
     for (const node of nodes) node.accept(this);
   }
 
-  visitBlockStmt(stmt: Stmt.Block): void {
+  visitBlockStmt(stmt: Stmt.Block) {
     this.#scope(() => {
       this.resolve(...stmt.statements);
     });
   }
 
-  visitExpressionStmt(stmt: Stmt.Expression): void {
+  visitClassStmt(stmt: Stmt.Class) {
+    const enclosingClass = this.#currentClass;
+    this.#currentClass = ClassType.CLASS;
+
+    this.#declare(stmt.name);
+    this.#define(stmt.name);
+
+    this.#scope(() => {
+      this.#scopes.at(-1)?.set("this", true);
+
+      for (const method of stmt.methods) {
+        let declaration = FunctionType.METHOD;
+        if (method.name.lexeme === "init") declaration = FunctionType.INITIALIZER;
+
+        this.#resolveFunction(method, declaration);
+      }
+    });
+
+    this.#currentClass = enclosingClass;
+  }
+
+  visitExpressionStmt(stmt: Stmt.Expression) {
     this.resolve(stmt.expr);
   }
 
-  visitFunctionStmt(stmt: Stmt.Function): void {
+  visitFunctionStmt(stmt: Stmt.Function) {
     this.#declare(stmt.name);
     this.#define(stmt.name);
 
     this.#resolveFunction(stmt, FunctionType.FUNCTION);
   }
 
-  visitIfStmt(stmt: Stmt.If): void {
+  visitIfStmt(stmt: Stmt.If) {
     this.resolve(stmt.condition);
     this.resolve(stmt.thenBranch);
     if (stmt.elseBranch) this.resolve(stmt.elseBranch);
   }
 
-  visitPrintStmt(stmt: Stmt.Print): void {
+  visitPrintStmt(stmt: Stmt.Print) {
     this.resolve(stmt.expr);
   }
 
-  visitReturnStmt(stmt: Stmt.Return): void {
+  visitReturnStmt(stmt: Stmt.Return) {
     if (this.#currentFunction == FunctionType.NONE) error(stmt.keyword, "Can't return from top-level code.");
+    if (
+      this.#currentFunction == FunctionType.INITIALIZER &&
+      stmt.value instanceof Expr.Literal &&
+      stmt.value.value !== null
+    ) {
+      error(stmt.keyword, "Can't return a value from an initializer.");
+    }
 
     this.resolve(stmt.value);
   }
 
-  visitVarStmt(stmt: Stmt.Var): void {
+  visitVarStmt(stmt: Stmt.Var) {
     this.#declare(stmt.name);
     if (stmt.initializer) this.resolve(stmt.initializer);
     this.#define(stmt.name);
   }
 
-  visitWhileStmt(stmt: Stmt.While): void {
+  visitWhileStmt(stmt: Stmt.While) {
     this.resolve(stmt.condition);
     this.resolve(stmt.body);
   }
 
-  visitAssignExpr(expr: Expr.Assign): void {
+  visitAssignExpr(expr: Expr.Assign) {
     this.resolve(expr.value);
     this.#resolveLocal(expr, expr.name);
   }
 
-  visitBinaryExpr(expr: Expr.Binary): void {
+  visitBinaryExpr(expr: Expr.Binary) {
     this.resolve(expr.left);
     this.resolve(expr.right);
   }
 
-  visitCallExpr(expr: Expr.Call): void {
+  visitCallExpr(expr: Expr.Call) {
     this.resolve(expr.callee);
     for (const arg of expr.args) this.resolve(arg);
   }
 
-  visitGroupingExpr(expr: Expr.Grouping): void {
+  visitGetExpr(expr: Expr.Get) {
+    this.resolve(expr.object);
+  }
+
+  visitGroupingExpr(expr: Expr.Grouping) {
     this.resolve(expr.expr);
   }
 
-  visitLiteralExpr(): void {
+  visitLiteralExpr() {
     // noop
   }
 
-  visitLogicalExpr(expr: Expr.Logical): void {
+  visitLogicalExpr(expr: Expr.Logical) {
     this.resolve(expr.left);
     this.resolve(expr.right);
   }
 
-  visitUnaryExpr(expr: Expr.Unary): void {
+  visitSetExpr(expr: Expr.Set) {
+    this.resolve(expr.value);
+    this.resolve(expr.object);
+  }
+
+  visitThisExpr(expr: Expr.This) {
+    if (this.#currentClass == ClassType.NONE) return error(expr.keyword, "Can't use 'this' outside of a class.");
+
+    this.#resolveLocal(expr, expr.keyword);
+  }
+
+  visitUnaryExpr(expr: Expr.Unary) {
     this.resolve(expr.expr);
   }
 
-  visitVariableExpr(expr: Expr.Variable): void {
+  visitVariableExpr(expr: Expr.Variable) {
     if (this.#scopes.at(-1)?.get(expr.name.lexeme) === false) {
       error(expr.name, "Can't read local variable in its own initializer.");
     }

@@ -5,14 +5,49 @@ export abstract class Expr {
 }
 
 export interface Visitor<T> {
-  visitVariableExpr(expr: Variable): T;
   visitAssignExpr(expr: Assign): T;
-  visitGroupingExpr(expr: Grouping): T;
   visitBinaryExpr(expr: Binary): T;
-  visitLogicalExpr(expr: Logical): T;
-  visitUnaryExpr(expr: Unary): T;
   visitCallExpr(expr: Call): T;
+  visitGetExpr(expr: Get): T;
+  visitGroupingExpr(expr: Grouping): T;
   visitLiteralExpr(expr: Literal): T;
+  visitLogicalExpr(expr: Logical): T;
+  visitSetExpr(expr: Set): T;
+  visitThisExpr(expr: This): T;
+  visitUnaryExpr(expr: Unary): T;
+  visitVariableExpr(expr: Variable): T;
+}
+
+export class Assign extends Expr {
+  name: Token;
+  value: Expr;
+
+  constructor(name: Token, value: Expr) {
+    super();
+    this.name = name;
+    this.value = value;
+  }
+
+  accept<T>(visitor: Visitor<T>) {
+    return visitor.visitAssignExpr(this);
+  }
+}
+
+export class Binary extends Expr {
+  left: Expr;
+  operator: Token;
+  right: Expr;
+
+  constructor(left: Expr, operator: Token, right: Expr) {
+    super();
+    this.left = left;
+    this.operator = operator;
+    this.right = right;
+  }
+
+  accept<T>(visitor: Visitor<T>) {
+    return visitor.visitBinaryExpr(this);
+  }
 }
 
 export class Call extends Expr {
@@ -32,31 +67,18 @@ export class Call extends Expr {
   }
 }
 
-export class Variable extends Expr {
+export class Get extends Expr {
+  object: Expr;
   name: Token;
 
-  constructor(name: Token) {
+  constructor(object: Expr, name: Token) {
     super();
+    this.object = object;
     this.name = name;
   }
 
   accept<T>(visitor: Visitor<T>) {
-    return visitor.visitVariableExpr(this);
-  }
-}
-
-export class Assign extends Expr {
-  name: Token;
-  value: Expr;
-
-  constructor(name: Token, value: Expr) {
-    super();
-    this.name = name;
-    this.value = value;
-  }
-
-  accept<T>(visitor: Visitor<T>) {
-    return visitor.visitAssignExpr(this);
+    return visitor.visitGetExpr(this);
   }
 }
 
@@ -86,6 +108,53 @@ export class Literal extends Expr {
   }
 }
 
+export class Logical extends Expr {
+  left: Expr;
+  operator: Token;
+  right: Expr;
+
+  constructor(left: Expr, operator: Token, right: Expr) {
+    super();
+    this.left = left;
+    this.operator = operator;
+    this.right = right;
+  }
+
+  accept<T>(visitor: Visitor<T>) {
+    return visitor.visitLogicalExpr(this);
+  }
+}
+
+export class Set extends Expr {
+  object: Expr;
+  name: Token;
+  value: Expr;
+
+  constructor(object: Expr, name: Token, value: Expr) {
+    super();
+    this.object = object;
+    this.name = name;
+    this.value = value;
+  }
+
+  accept<T>(visitor: Visitor<T>) {
+    return visitor.visitSetExpr(this);
+  }
+}
+
+export class This extends Expr {
+  keyword: Token;
+
+  constructor(keyword: Token) {
+    super();
+    this.keyword = keyword;
+  }
+
+  accept<T>(visitor: Visitor<T>) {
+    return visitor.visitThisExpr(this);
+  }
+}
+
 export class Unary extends Expr {
   operator: Token;
   expr: Expr;
@@ -101,36 +170,15 @@ export class Unary extends Expr {
   }
 }
 
-export class Binary extends Expr {
-  left: Expr;
-  operator: Token;
-  right: Expr;
+export class Variable extends Expr {
+  name: Token;
 
-  constructor(left: Expr, operator: Token, right: Expr) {
+  constructor(name: Token) {
     super();
-    this.left = left;
-    this.operator = operator;
-    this.right = right;
+    this.name = name;
   }
 
   accept<T>(visitor: Visitor<T>) {
-    return visitor.visitBinaryExpr(this);
-  }
-}
-
-export class Logical extends Expr {
-  left: Expr;
-  operator: Token;
-  right: Expr;
-
-  constructor(left: Expr, operator: Token, right: Expr) {
-    super();
-    this.left = left;
-    this.operator = operator;
-    this.right = right;
-  }
-
-  accept<T>(visitor: Visitor<T>) {
-    return visitor.visitLogicalExpr(this);
+    return visitor.visitVariableExpr(this);
   }
 }
