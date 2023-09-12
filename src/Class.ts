@@ -5,11 +5,13 @@ import type { Token } from "./Scanner";
 
 export class Class extends Callable {
   name: string;
+  superclass?: Class;
   #methods: Map<string, Function>;
 
-  constructor(name: string, methods?: Map<string, Function>) {
+  constructor(name: string, methods?: Map<string, Function>, superclass?: Class) {
     super();
     this.name = name;
+    this.superclass = superclass;
     this.#methods = methods || new Map();
   }
 
@@ -24,8 +26,11 @@ export class Class extends Callable {
     return instance;
   }
 
-  findMethod(name: string) {
-    return this.#methods.get(name);
+  findMethod(name: string): Function | undefined {
+    let method = this.#methods.get(name);
+    if (!method && this.superclass) method = this.superclass?.findMethod(name);
+
+    return method;
   }
 
   override toString() {

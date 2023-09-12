@@ -43,14 +43,28 @@ export class Interpreter implements Expr.Visitor<unknown>, Stmt.Visitor<unknown>
   }
 
   visitClassStmt(stmt: Stmt.Class) {
+    let superclass: Class | undefined;
+    if (stmt.superclass) {
+      const sup = this.#evaluate(stmt.superclass);
+      if (sup instanceof Class) superclass = sup;
+      else throw new RuntimeError(stmt.superclass.name, "Superclass must be a class.");
+    }
+
     this.#environment.define(stmt.name.lexeme, null);
+
+    if (stmt.superclass != null) {
+      this.#environment = new Environment(this.#environment);
+      this.#environment.define("super", superclass);
+    }
 
     const methods = new Map<string, Function>();
     for (const method of stmt.methods) {
       methods.set(method.name.lexeme, new Function(method, this.#environment, method.name.lexeme === "init"));
     }
 
-    this.#environment.assign(stmt.name, new Class(stmt.name.lexeme, methods));
+    if (superclass && this.#environment.enclosing) this.#environment = this.#environment.enclosing;
+
+    this.#environment.assign(stmt.name, new Class(stmt.name.lexeme, methods, superclass));
   }
 
   visitVarStmt(stmt: Stmt.Var) {
@@ -217,6 +231,24 @@ export class Interpreter implements Expr.Visitor<unknown>, Stmt.Visitor<unknown>
     object.set(expr.name, value);
 
     return value;
+  }
+
+  visitSuperExpr(expr: Expr.Super) {
+    const error = new RuntimeError(expr.method, "Undefined property '" + expr.method.lexeme + "'.");
+
+    const distance = this.#locals.get(expr);
+    if (distance === undefined) throw error;
+
+    const superclass = this.#environment.getAt(distance, "super");
+    if (!(superclass instanceof Class)) throw error;
+
+    const instance = this.#environment.getAt(distance - 1, "this");
+    if (!(instance instanceof Instance)) throw error;
+
+    const method = superclass.findMethod(expr.method.lexeme);
+    if (!method) throw error;
+
+    return method.bind(instance);
   }
 
   visitLiteralExpr(expr: Expr.Literal) {

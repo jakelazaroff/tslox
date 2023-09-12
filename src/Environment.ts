@@ -2,11 +2,11 @@ import { RuntimeError } from "./Interpreter";
 import type { Token } from "./Scanner";
 
 export class Environment {
-  #enclosing?: Environment;
+  enclosing?: Environment;
   values = new Map<string, unknown>();
 
   constructor(enclosing?: Environment) {
-    this.#enclosing = enclosing;
+    this.enclosing = enclosing;
   }
 
   assign(name: Token, value: unknown) {
@@ -15,8 +15,8 @@ export class Environment {
       return;
     }
 
-    if (this.#enclosing) {
-      this.#enclosing.assign(name, value);
+    if (this.enclosing) {
+      this.enclosing.assign(name, value);
       return;
     }
 
@@ -33,7 +33,7 @@ export class Environment {
 
   get(name: Token): unknown {
     if (this.values.has(name.lexeme)) return this.values.get(name.lexeme);
-    if (this.#enclosing) return this.#enclosing.get(name);
+    if (this.enclosing) return this.enclosing.get(name);
 
     throw new RuntimeError(name, "Undefined variable '" + name.lexeme + "'.");
   }
@@ -45,8 +45,8 @@ export class Environment {
   #ancestor(depth: number) {
     let env: Environment = this;
     for (let i = 0; i < depth; i++) {
-      if (!env.#enclosing) return;
-      env = env.#enclosing;
+      if (!env.enclosing) return;
+      env = env.enclosing;
     }
 
     return env;

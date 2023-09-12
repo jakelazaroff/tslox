@@ -13,7 +13,8 @@ enum FunctionType {
 
 enum ClassType {
   NONE,
-  CLASS
+  CLASS,
+  SUBCLASS
 }
 
 export class Resolver implements Expr.Visitor<void>, Stmt.Visitor<void> {
@@ -31,9 +32,9 @@ export class Resolver implements Expr.Visitor<void>, Stmt.Visitor<void> {
   }
 
   visitBlockStmt(stmt: Stmt.Block) {
-    this.#scope(() => {
-      this.resolve(...stmt.statements);
-    });
+    this.#beginScope();
+    this.resolve(...stmt.statements);
+    this.#endScope();
   }
 
   visitClassStmt(stmt: Stmt.Class) {
@@ -43,16 +44,30 @@ export class Resolver implements Expr.Visitor<void>, Stmt.Visitor<void> {
     this.#declare(stmt.name);
     this.#define(stmt.name);
 
-    this.#scope(() => {
-      this.#scopes.at(-1)?.set("this", true);
+    if (stmt.name.lexeme === stmt.superclass?.name.lexeme) {
+      error(stmt.superclass.name, "A class can't inherit from itself.");
+    }
 
-      for (const method of stmt.methods) {
-        let declaration = FunctionType.METHOD;
-        if (method.name.lexeme === "init") declaration = FunctionType.INITIALIZER;
+    if (stmt.superclass) {
+      this.#currentClass = ClassType.SUBCLASS;
+      this.resolve(stmt.superclass);
+      this.#beginScope();
+      this.#scopes.at(-1)?.set("super", true);
+    }
 
-        this.#resolveFunction(method, declaration);
-      }
-    });
+    this.#beginScope();
+
+    this.#scopes.at(-1)?.set("this", true);
+
+    for (const method of stmt.methods) {
+      let declaration = FunctionType.METHOD;
+      if (method.name.lexeme === "init") declaration = FunctionType.INITIALIZER;
+
+      this.#resolveFunction(method, declaration);
+    }
+
+    this.#endScope();
+    if (stmt.superclass) this.#endScope();
 
     this.#currentClass = enclosingClass;
   }
@@ -139,6 +154,14 @@ export class Resolver implements Expr.Visitor<void>, Stmt.Visitor<void> {
     this.resolve(expr.object);
   }
 
+  visitSuperExpr(expr: Expr.Super) {
+    if (this.#currentClass == ClassType.NONE) error(expr.keyword, "Can't use 'super' outside of a class.");
+    else if (this.#currentClass != ClassType.SUBCLASS)
+      error(expr.keyword, "Can't use 'super' in a class with no superclass.");
+
+    this.#resolveLocal(expr, expr.keyword);
+  }
+
   visitThisExpr(expr: Expr.This) {
     if (this.#currentClass == ClassType.NONE) return error(expr.keyword, "Can't use 'this' outside of a class.");
 
@@ -157,9 +180,11 @@ export class Resolver implements Expr.Visitor<void>, Stmt.Visitor<void> {
     this.#resolveLocal(expr, expr.name);
   }
 
-  #scope(fn: () => void) {
+  #beginScope() {
     this.#scopes.push(new Map());
-    fn();
+  }
+
+  #endScope() {
     this.#scopes.pop();
   }
 
@@ -171,13 +196,15 @@ export class Resolver implements Expr.Visitor<void>, Stmt.Visitor<void> {
   #resolveFunction(stmt: Stmt.Function, type: FunctionType) {
     const enclosingFunction = this.#currentFunction;
     this.#currentFunction = type;
-    this.#scope(() => {
-      for (const param of stmt.params) {
-        this.#declare(param);
-        this.#define(param);
-      }
-      this.resolve(...stmt.body);
-    });
+    this.#beginScope();
+
+    for (const param of stmt.params) {
+      this.#declare(param);
+      this.#define(param);
+    }
+    this.resolve(...stmt.body);
+
+    this.#endScope();
 
     this.#currentFunction = enclosingFunction;
   }
